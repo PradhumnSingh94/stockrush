@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: product-service
+  namespace: stockrush
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: product-service
+  template:
+    metadata:
+      labels:
+        app: product-service
+    spec:
+      containers:
+        - name: product-service
+          image: 185529490222.dkr.ecr.us-east-1.amazonaws.com/stockrush/product-service:latest
+          ports:
+            - containerPort: 3001
+              name: http
+            - containerPort: 50051
+              name: grpc
+          env:
+            - name: PORT
+              value: "3001"
+            - name: NODE_ENV
+              valueFrom:
+                configMapKeyRef:
+                  name: stockrush-config
+                  key: NODE_ENV
+            - name: REDIS_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: stockrush-config
+                  key: REDIS_URL
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: stockrush-secrets
+                  key: PRODUCT_DB_URL
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "200m"
+            limits:
+              memory: "512Mi"
+              cpu: "400m"
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3001
+            initialDelaySeconds: 15
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3001
+            initialDelaySeconds: 30
+            periodSeconds: 10

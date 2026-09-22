@@ -1,0 +1,11 @@
+module.exports = {
+  allowBuilds: {
+    "@prisma/engines": true,
+    argon2: true,
+    esbuild: true,
+    prisma: true,
+    protobufjs: true,
+    sharp: true,
+    "unrs-resolver": true,
+  },
+};

@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: stockrush-config
+  namespace: stockrush
+data:
+  NODE_ENV: "production"
+  PRODUCT_SERVICE_URL: "http://product-service:3001"
+  ORDER_SERVICE_URL: "http://order-service:3002"
+  AUTH_SERVICE_URL: "http://auth-service:3003"
+  PRODUCT_GRPC_URL: "product-service:50051"
+  REDIS_URL: "redis://redis-service:6379"
+  ALLOWED_ORIGINS: "http://localhost:3030"

@@ -1,0 +1,120 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: stockrush
+      POSTGRES_PASSWORD: stockrush_dev
+      POSTGRES_DB: stockrush
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U stockrush"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  product-service:
+    build:
+      context: .
+      dockerfile: apps/product-service/Dockerfile
+    environment:
+      PORT: 3001
+      DATABASE_URL: postgresql://stockrush:stockrush_dev@postgres:5432/stockrush_products
+      REDIS_URL: redis://redis:6379
+      NODE_ENV: production
+    ports:
+      - "3001:3001"
+      - "50051:50051"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  order-service:
+    build:
+      context: .
+      dockerfile: apps/order-service/Dockerfile
+    environment:
+      PORT: 3002
+      DATABASE_URL: postgresql://stockrush:stockrush_dev@postgres:5432/stockrush_orders
+      REDIS_URL: redis://redis:6379
+      PRODUCT_SERVICE_URL: product-service:50051
+      NODE_ENV: production
+    ports:
+      - "3002:3002"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      product-service:
+        condition: service_started
+
+  auth-service:
+    build:
+      context: .
+      dockerfile: apps/auth-service/Dockerfile
+    environment:
+      PORT: 3003
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/stockrush_auth
+      PASETO_SECRET_KEY: 32a09abb16f636f2f730d5f8d15a2030e2b943c922637daff99000d8fcef8c26
+      TOKEN_EXPIRY: 24h
+      NODE_ENV: production
+    ports:
+      - "3003:3003"
+    depends_on:
+      postgres:
+        condition: service_healthy
+  api-gateway:
+    build:
+      context: .
+      dockerfile: apps/api-gateway/Dockerfile
+    environment:
+      PORT: 3000
+      JWT_SECRET: your-secret-change-in-production
+      PRODUCT_SERVICE_URL: http://product-service:3001
+      ORDER_SERVICE_URL: http://order-service:3002
+      AUTH_SERVICE_URL: http://auth-service:3003
+      REDIS_URL: redis://redis:6379
+      NODE_ENV: production
+      PASETO_SECRET_KEY: 32a09abb16f636f2f730d5f8d15a2030e2b943c922637daff99000d8fcef8c26
+    ports:
+      - "3000:3000"
+    depends_on:
+      - product-service
+      - order-service
+
+  notification-service:
+    build:
+      context: .
+      dockerfile: apps/notification-service/Dockerfile
+    environment:
+      REDIS_URL: redis://redis:6379
+      GMAIL_USER: pradhumndev22@gmail.com
+      GMAIL_APP_PASSWORD: yevzgrobbdjunlye
+      NODE_ENV: production
+    depends_on:
+      redis:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  redis_data:

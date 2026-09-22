@@ -1,0 +1,27 @@
+{
+  "name": "stockrush",
+  "private": true,
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "db:generate": "turbo db:generate",
+    "db:migrate": "turbo db:migrate"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/node": "^25.6.0",
+    "turbo": "^2.9.7",
+    "typescript": "^6.0.3"
+  }
+}
