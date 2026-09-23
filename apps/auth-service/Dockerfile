@@ -30,12 +30,17 @@ WORKDIR /app
 
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/apps/auth-service/node_modules ./apps/auth-service/node_modules
+COPY --from=builder /app/packages/shared/node_modules ./packages/shared/node_modules
+COPY --from=builder /app/packages/shared/package.json ./packages/shared/package.json
 COPY --from=builder /app/packages/shared/dist ./packages/shared/dist
 COPY --from=builder /app/apps/auth-service/dist ./apps/auth-service/dist
 COPY --from=builder /app/apps/auth-service/src/generated ./apps/auth-service/dist/generated
 COPY apps/auth-service/prisma ./apps/auth-service/prisma
 COPY apps/auth-service/prisma.config.ts ./apps/auth-service/prisma.config.ts
 COPY apps/auth-service/package.json ./apps/auth-service/package.json
+
+RUN mkdir -p /app/node_modules/@stockrush && \
+    ln -s /app/packages/shared /app/node_modules/@stockrush/shared
 
 WORKDIR /app/apps/auth-service
 
