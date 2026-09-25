@@ -25,7 +25,7 @@ const productProto = grpc.loadPackageDefinition(packageDefinition) as any;
 // For local development, use 'localhost:50051'.
 // For Docker, use 'product-service:50051'.
 const client = new productProto.product.ProductService(
-  process.env.PRODUCT_SERVICE_URL || "localhost:50051",
+  process.env.PRODUCT_GRPC_URL || "localhost:50051",
   grpc.credentials.createInsecure(),
 );
 

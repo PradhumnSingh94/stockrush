@@ -11,3 +11,5 @@ data:
   PRODUCT_GRPC_URL: "product-service:50051"
   REDIS_URL: "redis://redis-service:6379"
   ALLOWED_ORIGINS: "http://localhost:3030"
+  RATE_LIMIT_ORDERS: "10000"
+  RATE_LIMIT_PRODUCT_READ: "10000"

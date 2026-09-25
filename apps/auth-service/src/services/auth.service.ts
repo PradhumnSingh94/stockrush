@@ -8,6 +8,11 @@ import {
   LoginDto,
   AuthResponse,
 } from "@stockrush/shared";
+import {
+  loginAttemptsCounter,
+  registrationCounter,
+  tokenIssuedCounter,
+} from "../metrics";
 
 export const AuthService = {
   async register(dto: RegisterDto): Promise<AuthResponse> {
@@ -44,7 +49,8 @@ export const AuthService = {
       userId: user.id,
       email: user.email,
     });
-
+    registrationCounter.inc();
+    tokenIssuedCounter.inc();
     return {
       token,
       user: {
@@ -63,6 +69,7 @@ export const AuthService = {
     // Same error for wrong email and wrong password
     // Never reveal which one failed — prevents user enumeration
     if (!user) {
+      loginAttemptsCounter.inc({ success: "false" });
       throw new AppError(
         ErrorCode.VALIDATION_ERROR,
         "Invalid credentials",
@@ -73,6 +80,7 @@ export const AuthService = {
     const valid = await argon2.verify(user.passwordHash, dto.password);
 
     if (!valid) {
+      loginAttemptsCounter.inc({ success: "false" });
       throw new AppError(
         ErrorCode.VALIDATION_ERROR,
         "Invalid credentials",
@@ -84,7 +92,8 @@ export const AuthService = {
       userId: user.id,
       email: user.email,
     });
-
+    loginAttemptsCounter.inc({ success: "true" });
+    tokenIssuedCounter.inc();
     return {
       token,
       user: {

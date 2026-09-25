@@ -3,10 +3,13 @@ kind: Service
 metadata:
   name: auth-service
   namespace: stockrush
+  labels:
+    monitor: "true"
 spec:
   selector:
     app: auth-service
   ports:
-    - port: 3003
+    - name: http
+      port: 3003
       targetPort: 3003
   type: ClusterIP

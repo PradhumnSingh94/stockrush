@@ -12,7 +12,7 @@ COPY turbo.json ./
 COPY apps/auth-service/package.json ./apps/auth-service/
 COPY packages/shared/package.json ./packages/shared/
 COPY packages/tsconfig/package.json ./packages/tsconfig/
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile --filter @stockrush/auth-service...
 
 FROM deps AS builder
 COPY packages/tsconfig ./packages/tsconfig

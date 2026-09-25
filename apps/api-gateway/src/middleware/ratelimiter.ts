@@ -31,17 +31,16 @@ const loginLimiter = new RateLimiterRedis({
 const orderLimiter = new RateLimiterRedis({
   storeClient: redisClient,
   keyPrefix: "rl:order",
-  points: 5, // 5 requests
-  duration: 60, // per minute
+  points: parseInt(process.env.RATE_LIMIT_ORDERS || "5"),
+  duration: 60,
   blockDuration: 60,
 });
 
-// Product read — per IP, generous
 const productReadLimiter = new RateLimiterRedis({
   storeClient: redisClient,
   keyPrefix: "rl:product:read",
-  points: 100, // 100 requests
-  duration: 60, // per minute
+  points: parseInt(process.env.RATE_LIMIT_PRODUCT_READ || "100"),
+  duration: 60,
   blockDuration: 30,
 });
 

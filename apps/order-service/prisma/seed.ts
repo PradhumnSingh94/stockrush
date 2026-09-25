@@ -1,7 +1,7 @@
-import { PrismaClient } from '../src/generated/prisma/client';
-import { PrismaPg } from '@prisma/adapter-pg';
-import pg from 'pg';
-import dotenv from 'dotenv';
+import { PrismaClient } from "../src/generated/prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
+import pg from "pg";
+import dotenv from "dotenv";
 
 dotenv.config();
 
@@ -11,9 +11,9 @@ const prisma = new PrismaClient({ adapter });
 
 // Replace with actual IDs printed by product seed above
 const PRODUCT_IDS = {
-  nikeAirMax: "c9787201-0eff-4dd7-9765-053eaafba2c8",
-  sonyHeadphones: "6dfed867-7bb1-4cc9-8e72-2d6c7ad4954a",
-  appleWatch: "9b36d73e-4617-4de5-aa3b-db62dd3d6524",
+  nikeAirMax: "affc46bd-5257-49d5-84b8-bb3025700027",
+  sonyHeadphones: "0434c96f-89fb-49da-ab6b-3281cfa7f385",
+  appleWatch: "89cdb168-33b6-47b0-9fc8-53c34893d3b2",
 };
 
 async function main() {
@@ -30,6 +30,7 @@ async function main() {
         create: [
           {
             productId: PRODUCT_IDS.nikeAirMax,
+            productName: "Nike Air Max 2026",
             quantity: 1,
             unitPrice: 129.99,
           },
@@ -47,11 +48,13 @@ async function main() {
         create: [
           {
             productId: PRODUCT_IDS.sonyHeadphones,
+            productName: "Sony WH-1000XM4",
             quantity: 2,
             unitPrice: 349.99,
           },
           {
             productId: PRODUCT_IDS.appleWatch,
+            productName: "Apple Watch Series 8",
             quantity: 1,
             unitPrice: 799.99,
           },
@@ -69,6 +72,7 @@ async function main() {
         create: [
           {
             productId: PRODUCT_IDS.appleWatch,
+            productName: "Apple Watch Series 8",
             quantity: 1,
             unitPrice: 799.99,
           },

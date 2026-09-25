@@ -2,6 +2,7 @@ import { prisma } from "../db/prisma.client";
 import { AppError, ErrorCode, CreateOrderDto } from "@stockrush/shared";
 import { productClient } from "../clients/product.grpc.client";
 import { OrderStream } from "../streams/order.stream";
+import { ordersCreatedCounter, orderCreationDuration } from "../metrics";
 
 export const OrderService = {
   async create(dto: CreateOrderDto, correlationId: string) {
@@ -9,6 +10,7 @@ export const OrderService = {
 
     const successfulDecrements: string[] = [];
     const itemSnapshots = [];
+    const start = Date.now();
     try {
       for (const item of items) {
         const product = await productClient.get(item.productId);
@@ -53,9 +55,11 @@ export const OrderService = {
         },
         correlationId,
       );
-
+      ordersCreatedCounter.inc({ status: "confirmed" });
+      orderCreationDuration.observe((Date.now() - start) / 1000);
       return order;
     } catch (error: any) {
+      ordersCreatedCounter.inc({ status: "failed" });
       console.error(
         "Order process failed, starting compensation...",
         error.message,

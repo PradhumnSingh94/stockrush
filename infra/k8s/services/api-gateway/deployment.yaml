@@ -56,6 +56,16 @@ spec:
                 secretKeyRef:
                   name: stockrush-secrets
                   key: PASETO_PUBLIC_KEY
+            - name: RATE_LIMIT_ORDERS
+              valueFrom:
+                configMapKeyRef:
+                  key: RATE_LIMIT_ORDERS
+                  name: stockrush-config
+            - name: RATE_LIMIT_PRODUCT_READ
+              valueFrom:
+                configMapKeyRef:
+                  key: RATE_LIMIT_PRODUCT_READ
+                  name: stockrush-config
           resources:
             requests:
               memory: "128Mi"

@@ -4,6 +4,7 @@ import { config } from "./config";
 import { errorHandler } from "./middleware/error-handler";
 import { orderRouter } from "./routes/order.routes";
 import { correlationMiddleware } from "./middleware/correlation";
+import { registry } from "@stockrush/shared";
 
 const app = express();
 
@@ -14,6 +15,10 @@ app.get("/health", (req, res) => {
 });
 
 app.use("/orders", orderRouter);
+app.get("/metrics", async (req, res) => {
+  res.set("Content-Type", registry.contentType);
+  res.send(await registry.metrics());
+});
 app.use(errorHandler);
 
 app.listen(config.PORT, () => {

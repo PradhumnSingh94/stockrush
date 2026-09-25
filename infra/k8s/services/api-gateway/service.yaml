@@ -3,10 +3,13 @@ kind: Service
 metadata:
   name: api-gateway
   namespace: stockrush
+  labels:
+    monitor: "true"
 spec:
   selector:
     app: api-gateway
   ports:
-    - port: 3000
+    - name: http
+      port: 3000
       targetPort: 3000
   type: LoadBalancer

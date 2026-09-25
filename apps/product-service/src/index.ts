@@ -6,6 +6,7 @@ import { errorHandler } from "./middleware/error-handler";
 import "./grpc/product.grpc.server"; // starts gRPC server on boot
 import { correlationMiddleware } from "./middleware/correlation";
 import { StockSyncJob } from "./jobs/stock-sync.job";
+import { registry } from "@stockrush/shared";
 
 const app = express();
 
@@ -17,6 +18,11 @@ app.get("/health", (req, res) => {
     service: "product-service",
     stockSync: StockSyncJob.getStatus(),
   });
+});
+
+app.get("/metrics", async (req, res) => {
+  res.set("Content-Type", registry.contentType);
+  res.send(await registry.metrics());
 });
 
 app.use("/products", productRouter);

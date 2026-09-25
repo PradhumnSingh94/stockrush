@@ -3,10 +3,13 @@ kind: Service
 metadata:
   name: notification-service
   namespace: stockrush
+  labels:
+    monitor: "true"
 spec:
   selector:
     app: notification-service
   ports:
-    - port: 3004
+    - name: http
+      port: 3004
       targetPort: 3004
   type: ClusterIP

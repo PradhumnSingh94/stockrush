@@ -3,6 +3,8 @@ kind: Service
 metadata:
   name: product-service
   namespace: stockrush
+  labels:
+    monitor: "true"
 spec:
   selector:
     app: product-service
