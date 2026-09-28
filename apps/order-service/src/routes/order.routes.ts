@@ -3,21 +3,13 @@ import { CreateOrderDtoSchema } from "@stockrush/shared";
 import { validate } from "../middleware/validate";
 import { OrderService } from "../services/order.service";
 import { CorrelatedRequest } from "../middleware/correlation";
+import { idempotencyMiddleware } from "../middleware/idempotency";
 
 export const orderRouter: Router = Router();
 
-// orderRouter.get("/", async (req, res) => {
-//   const orders = await OrderService.list();
-//   res.json(orders);
-// });
-
-// orderRouter.get("/:id", async (req, res) => {
-//   const order = await OrderService.findById(req.params.id);
-//   res.json(order);
-// });
-
 orderRouter.post(
   "/",
+  idempotencyMiddleware, // ← add before validate
   validate(CreateOrderDtoSchema),
   async (req: CorrelatedRequest, res) => {
     req.log?.info({ msg: "Creating new order" });

@@ -3,6 +3,10 @@ import { AppError, ErrorCode, CreateOrderDto } from "@stockrush/shared";
 import { productClient } from "../clients/product.grpc.client";
 import { OrderStream } from "../streams/order.stream";
 import { ordersCreatedCounter, orderCreationDuration } from "../metrics";
+import {
+  decrementBreaker,
+  getProductBreaker,
+} from "../clients/circuit-breaker";
 
 export const OrderService = {
   async create(dto: CreateOrderDto, correlationId: string) {
@@ -13,11 +17,11 @@ export const OrderService = {
     const start = Date.now();
     try {
       for (const item of items) {
-        const product = await productClient.get(item.productId);
+        const product = await getProductBreaker.fire(item.productId);
         if (product.stock < item.quantity) {
           throw new Error(`Inssuficient stock for ${product.name}`);
         }
-        await productClient.decrement(item.productId, item.quantity);
+        await decrementBreaker.fire(item.productId, item.quantity);
         successfulDecrements.push(item.productId);
         itemSnapshots.push({
           productId: item.productId,
