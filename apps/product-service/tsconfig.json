@@ -1,5 +1,5 @@
 {
-  "extends": "@stockrush/packages/tsconfig/base.json",
+  "extends": "@stockrush/tsconfig/base.json",
   "compilerOptions": {
     "outDir": "./dist",
     "rootDir": "./src"

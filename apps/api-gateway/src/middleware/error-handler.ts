@@ -5,8 +5,13 @@ export const errorHandler = (
   err: Error,
   req: Request,
   res: Response,
-  next: NextFunction
-) => {
+  next: NextFunction,
+): void => {
+  if (res.headersSent) {
+    next(err);
+    return;
+  }
+
   if (err instanceof AppError) {
     res.status(err.statusCode).json({
       code: err.code,
@@ -16,7 +21,6 @@ export const errorHandler = (
   }
 
   console.error("Unhandled error:", err);
-
   res.status(500).json({
     code: ErrorCode.INTERNAL_ERROR,
     message: "Internal server error",

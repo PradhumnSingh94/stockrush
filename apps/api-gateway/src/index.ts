@@ -12,13 +12,18 @@ import { metricsMiddleware } from "./middleware/metrics";
 
 const app = express();
 
-// CORS — must be before all routes
 app.use(
   cors({
     origin: config.ALLOWED_ORIGINS.split(","),
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "x-correlation-id"],
+    // Required because the browser sends this header during checkout.
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "x-correlation-id",
+      "x-idempotency-key",
+    ],
   }),
 );
 
@@ -29,7 +34,6 @@ app.get("/health", (req, res) => {
   res.json({ status: "ok", service: "api-gateway" });
 });
 
-console.log("API call is in internet gateway, will forward according to url");
 app.use("/api/auth", authRouter);
 app.use("/api/products", productRouter);
 app.use("/api/orders", orderRouter);

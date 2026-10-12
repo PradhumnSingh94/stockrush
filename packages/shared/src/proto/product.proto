@@ -7,9 +7,12 @@ service ProductService {
   rpc DecrementStock (StockActionRequest) returns (StockActionResponse) {}
   rpc IncrementStock (StockActionRequest) returns (StockActionResponse) {}
 
-  rpc ReserveStock(ReserveStockRequest) returns (ReserveStockResponse) {}
-  rpc ReleaseStock(ReservationRequest) returns (ReservationResponse) {}
-  rpc GetReservation(ReservationRequest) returns (ReserveStockResponse) {}
+  // Atomically reserve all requested items or reserve none.
+  rpc ReserveStock (ReserveStockRequest) returns (ReserveStockResponse) {}
+  // Read a reservation to reconcile an ambiguous timeout.
+  rpc GetReservation (ReservationRequest) returns (ReserveStockResponse) {}
+  // Idempotently release a known reservation during Saga compensation.
+  rpc ReleaseStock (ReservationRequest) returns (ReservationResponse) {}
 }
 
 message ProductRequest {
@@ -67,7 +70,3 @@ message ReservationResponse {
   string reservation_id = 1;
   string status = 2;
 }
-
-syntax = "proto3";
-
-package product;

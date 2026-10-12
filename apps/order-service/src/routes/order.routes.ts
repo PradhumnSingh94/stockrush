@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { CreateOrderDtoSchema } from "@stockrush/shared";
+import { CreateOrderDtoSchema, ErrorCode } from "@stockrush/shared";
 import { validate } from "../middleware/validate";
 import { OrderService } from "../services/order.service";
 import { CorrelatedRequest } from "../middleware/correlation";
@@ -7,29 +7,31 @@ import { idempotencyMiddleware } from "../middleware/idempotency";
 
 export const orderRouter: Router = Router();
 
+// The API Gateway posts to /orders; index.ts mounts this router at /orders.
 orderRouter.post(
-  "/create",
-  idempotencyMiddleware, // ← add before validate
+  "/",
   validate(CreateOrderDtoSchema),
+  idempotencyMiddleware,
   async (req: CorrelatedRequest, res) => {
     const idempotencyKey = req.header("X-Idempotency-Key");
-
     if (!idempotencyKey) {
       return res.status(400).json({
-        error: "X-Idempotency-Key is required",
+        code: ErrorCode.VALIDATION_ERROR,
+        message: "X-Idempotency-Key is required",
+        correlationId: req.correlationId,
       });
     }
-    req.log?.info({ msg: "Creating new order" });
-    const order = await OrderService.create(
-      req.body,
-      req.correlationId!,
-      idempotencyKey,
-    );
-    if (typeof order === "string") {
-      req.log?.error({ msg: "Order creation failed", detail: order });
-      return res.status(500).json({ error: order });
+
+    if (!req.correlationId) {
+      return res.status(400).json({
+        code: ErrorCode.VALIDATION_ERROR,
+        message: "X-Correlation-ID is required",
+      });
     }
-    req.log?.info({ orderId: order.id, msg: "New order created" });
+
+    req.log?.info({ msg: "Creating/reconciling order workflow" });
+    const order = await OrderService.create(req.body, req.correlationId, idempotencyKey);
+    req.log?.info({ orderId: order.id, msg: "Order confirmed" });
     res.status(201).json(order);
   },
 );

@@ -1,12 +1,8 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
+// Product Service owns authoritative catalog and inventory data.
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
-  moduleFormat  = "cjs"
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
 }
 
 datasource db {
@@ -14,14 +10,14 @@ datasource db {
 }
 
 model Product {
-  id          String   @id @default(uuid())
-  name        String
-  description String?
-  price       Decimal   @db.Decimal(10, 2)
-  stock       Int       @default(0)
+  id              String   @id @default(uuid())
+  name            String
+  description     String?
+  price           Decimal  @db.Decimal(10, 2)
+  stock           Int      @default(0)
   flashSaleEndsAt DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   @@map("products")
 }
@@ -32,31 +28,26 @@ enum ReservationStatus {
 }
 
 model StockReservation {
-  id        String            @id
-  orderId   String
+  id          String                 @id
+  orderId     String                 @unique(map: "stock_reservation_orderId_key")
   requestHash String
-  status    ReservationStatus @default(RESERVED)
-  createdAt DateTime          @default(now())
-  updatedAt DateTime          @updatedAt
-  items     StockReservationItem[]
+  status      ReservationStatus      @default(RESERVED)
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+  items       StockReservationItem[]
 
-  @@index([orderId])
   @@map("stock_reservation")
 }
 
 model StockReservationItem {
-  id            String          @id @default(uuid())
+  id            String           @id @default(uuid())
   reservationId String
   productId     String
   productName   String
-  unitPrice     Decimal         @db.Decimal(10, 2)
+  unitPrice     Decimal          @db.Decimal(10, 2)
   quantity      Int
-  reservation   StockReservation @relation(
-    fields: [reservationId],
-    references: [id],
-    onDelete: Cascade
-  )
+  reservation   StockReservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
 
-  @@unique([reservationId, productId])
+  @@unique([reservationId, productId], map: "stock_reservation_item_reservationId_productId_key")
   @@map("stock_reservation_item")
 }
