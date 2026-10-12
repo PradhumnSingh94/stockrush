@@ -25,3 +25,38 @@ model Product {
 
   @@map("products")
 }
+
+enum ReservationStatus {
+  RESERVED
+  RELEASED
+}
+
+model StockReservation {
+  id        String            @id
+  orderId   String
+  requestHash String
+  status    ReservationStatus @default(RESERVED)
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+  items     StockReservationItem[]
+
+  @@index([orderId])
+  @@map("stock_reservation")
+}
+
+model StockReservationItem {
+  id            String          @id @default(uuid())
+  reservationId String
+  productId     String
+  productName   String
+  unitPrice     Decimal         @db.Decimal(10, 2)
+  quantity      Int
+  reservation   StockReservation @relation(
+    fields: [reservationId],
+    references: [id],
+    onDelete: Cascade
+  )
+
+  @@unique([reservationId, productId])
+  @@map("stock_reservation_item")
+}

@@ -20,6 +20,15 @@ enum OrderStatus {
   CANCELLED
 }
 
+enum OrderWorkflowStatus {
+  STARTED
+  RESERVED
+  COMPLETED
+  COMPENSATION_PENDING
+  COMPENSATED
+  FAILED
+}
+
 model Order {
   id          String   @id @default(uuid())
   userId      String
@@ -41,4 +50,30 @@ model OrderItem {
   order       Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   @@map("orderItem")
+}
+
+model OrderWorkflow {
+  id          String              @id
+  userId      String
+  requestHash String
+  status      OrderWorkflowStatus @default(STARTED)
+  lastError   String?
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  @@map("order_workflow")
+}
+
+model OutboxEvent {
+  id          String   @id @default(uuid())
+  eventType   String
+  aggregateId String
+  payload     Json
+  publishedAt DateTime?
+  attempts    Int      @default(0)
+  lastError   String?
+  createdAt   DateTime @default(now())
+
+  @@index([publishedAt, createdAt])
+  @@map("outbox_event")
 }

@@ -6,6 +6,10 @@ service ProductService {
   rpc GetProduct (ProductRequest) returns (ProductResponse) {}
   rpc DecrementStock (StockActionRequest) returns (StockActionResponse) {}
   rpc IncrementStock (StockActionRequest) returns (StockActionResponse) {}
+
+  rpc ReserveStock(ReserveStockRequest) returns (ReserveStockResponse) {}
+  rpc ReleaseStock(ReservationRequest) returns (ReservationResponse) {}
+  rpc GetReservation(ReservationRequest) returns (ReserveStockResponse) {}
 }
 
 message ProductRequest {
@@ -28,3 +32,42 @@ message StockActionResponse {
   bool success = 1;
   string message = 2;
 }
+
+message ReservationItemRequest {
+  string product_id = 1;
+  int32 quantity = 2;
+}
+
+message ReservedItem {
+  string product_id = 1;
+  string product_name = 2;
+  string unit_price = 3;
+  int32 quantity = 4;
+}
+
+message ReserveStockRequest {
+  string reservation_id = 1;
+  string order_id = 2;
+  string request_hash = 3;
+  repeated ReservationItemRequest items = 4;
+}
+
+message ReserveStockResponse {
+  string reservation_id = 1;
+  string status = 2;
+  repeated ReservedItem items = 3;
+}
+
+message ReservationRequest {
+  string reservation_id = 1;
+  string request_hash = 2;
+}
+
+message ReservationResponse {
+  string reservation_id = 1;
+  string status = 2;
+}
+
+syntax = "proto3";
+
+package product;

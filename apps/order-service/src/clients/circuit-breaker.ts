@@ -32,3 +32,27 @@ decrementBreaker.on("close", () => {
 decrementBreaker.fallback(() => {
   throw new Error("Product service unavailable — circuit open");
 });
+
+const reservationOptions = {
+  timeout: 3000,
+  errorThresholdPercentage: 50,
+  resetTimeout: 30000,
+  volumeThreshold: 5,
+};
+
+export const reserveStockBreaker = new CircuitBreaker(
+  productClient.reserveStock,
+  reservationOptions,
+);
+
+reserveStockBreaker.on("open", () => {
+  console.error("Stock reservation circuit opened");
+});
+
+reserveStockBreaker.on("halfOpen", () => {
+  console.log("Reserve Stock Breaker Circuit HALF-OPEN");
+});
+
+reserveStockBreaker.on("close", () => {
+  console.log("Reserve Stock Breaker Circuit CLOSED");
+});
