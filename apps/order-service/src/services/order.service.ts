@@ -62,7 +62,24 @@ function isStockRejection(error: unknown): boolean {
   return grpcCode(error) === grpc.status.FAILED_PRECONDITION;
 }
 
-type Workflow = NonNullable<Awaited<ReturnType<typeof prisma.orderWorkflow.findUnique>>>;
+type Workflow = {
+  id: string;
+  orderId: string;
+  userId: string;
+  userEmail: string;
+  requestHash: string;
+  reservationHash: string;
+  requestPayload: unknown;
+  correlationId: string;
+  status: "STARTED" | "RESERVED" | "COMPLETED" | "COMPENSATION_PENDING" | "COMPENSATED" | "FAILED";
+  lastError: string | null;
+  attempts: number;
+  nextAttemptAt: Date;
+  leaseOwner: string | null;
+  leaseUntil: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+};
 
 function workflowItems(workflow: Workflow): NormalizedItem[] {
   const payload = workflow.requestPayload as { items?: NormalizedItem[] };

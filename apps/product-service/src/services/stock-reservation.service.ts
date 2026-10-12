@@ -272,7 +272,7 @@ export async function releaseStock(
       throw new Error("RESERVATION_STATE_CONFLICT: unable to claim release");
     }
 
-    for (const item of reservation.items) {
+    for (const item of [...reservation.items].sort((a, b) => a.productId.localeCompare(b.productId))) {
       await tx.product.update({
         where: { id: item.productId },
         data: { stock: { increment: item.quantity } },

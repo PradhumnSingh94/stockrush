@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import { OrderConfirmedEvent, OrderConfirmedEventSchema } from "@stockrush/shared";
 import { redis } from "../cache/redis.client";
 
@@ -10,7 +9,7 @@ export const OrderStream = {
   async publishConfirmed(
     payload: OrderConfirmedEvent["payload"],
     correlationId: string,
-    eventId: string = randomUUID(),
+    eventId: string,
   ): Promise<void> {
     const event = OrderConfirmedEventSchema.parse({
       eventType: "ORDER_CONFIRMED",
