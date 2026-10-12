@@ -3,6 +3,9 @@ export enum ErrorCode {
   STOCK_INSUFFICIENT = "STOCK_INSUFFICIENT",
   FLASH_SALE_ENDED = "FLASH_SALE_ENDED",
   VALIDATION_ERROR = "VALIDATION_ERROR",
+  IDEMPOTENCY_CONFLICT = "IDEMPOTENCY_CONFLICT",
+  ORDER_RECOVERY_PENDING = "ORDER_RECOVERY_PENDING",
+  SERVICE_UNAVAILABLE = "SERVICE_UNAVAILABLE",
   INTERNAL_ERROR = "INTERNAL_ERROR",
 }
 
@@ -10,7 +13,7 @@ export class AppError extends Error {
   constructor(
     public readonly code: ErrorCode,
     message: string,
-    public readonly statusCode: number = 400
+    public readonly statusCode: number = 400,
   ) {
     super(message);
     this.name = "AppError";

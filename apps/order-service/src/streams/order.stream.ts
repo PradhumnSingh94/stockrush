@@ -1,43 +1,25 @@
+import { randomUUID } from "node:crypto";
+import { OrderConfirmedEvent, OrderConfirmedEventSchema } from "@stockrush/shared";
 import { redis } from "../cache/redis.client";
-import { OrderConfirmedEvent } from "@stockrush/shared";
-import { randomUUID } from "crypto";
 
 const STREAM_KEY = "events:orders";
 const MAX_STREAM_LENGTH = 10000;
 
+/** Publish with the durable outbox ID; Redis can redeliver, consumers dedupe eventId. */
 export const OrderStream = {
   async publishConfirmed(
-    dto: OrderConfirmedEvent["payload"],
+    payload: OrderConfirmedEvent["payload"],
     correlationId: string,
+    eventId: string = randomUUID(),
   ): Promise<void> {
-    const event: OrderConfirmedEvent = {
+    const event = OrderConfirmedEventSchema.parse({
       eventType: "ORDER_CONFIRMED",
-      payload: {
-        orderId: dto.orderId,
-        userId: dto.userId,
-        userEmail: dto.userEmail,
-        items: dto.items,
-      },
-      metadata: {
-        timestamp: new Date().toISOString(),
-        correlationId: correlationId,
-      },
-    };
+      payload,
+      metadata: { eventId, timestamp: new Date().toISOString(), correlationId },
+    });
 
-    // XADD — append to stream
-    // MAXLEN ~ 10000 — trim stream to avoid unbounded growth
     await redis.xadd(
-      STREAM_KEY,
-      "MAXLEN",
-      "~",
-      MAX_STREAM_LENGTH,
-      "*", // auto-generate message ID
-      "data",
-      JSON.stringify(event), // field: value
-    );
-
-    console.log(
-      `Stream event published: ORDER_CONFIRMED for order ${dto.orderId}`,
+      STREAM_KEY, "MAXLEN", "~", MAX_STREAM_LENGTH, "*", "data", JSON.stringify(event),
     );
   },
 };

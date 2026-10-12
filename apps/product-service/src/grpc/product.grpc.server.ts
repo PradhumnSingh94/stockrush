@@ -9,11 +9,7 @@ import {
 } from "../services/stock-reservation.service";
 
 const sharedPackageJson = require.resolve("@stockrush/shared/package.json");
-
-// 2. Get the directory of that package.json
 const sharedRoot = path.dirname(sharedPackageJson);
-
-// 3. Manually join the path to the proto file
 const PROTO_PATH = path.join(sharedRoot, "src/proto/product.proto");
 
 const packageDefinition = protoLoader.loadSync(PROTO_PATH, {
@@ -25,65 +21,92 @@ const packageDefinition = protoLoader.loadSync(PROTO_PATH, {
 });
 
 const productProto = grpc.loadPackageDefinition(packageDefinition) as any;
-
 const server = new grpc.Server();
 
-// Implementation of the gRPC methods
+function grpcError(code: number, details: string): grpc.ServiceError {
+  return {
+    name: "ServiceError",
+    message: details,
+    code,
+    details,
+    metadata: new grpc.Metadata(),
+  } as grpc.ServiceError;
+}
+
+function domainGrpcError(error: unknown): grpc.ServiceError {
+  const message = error instanceof Error ? error.message : String(error);
+
+  if (message.startsWith("INSUFFICIENT_STOCK:")) {
+    return grpcError(grpc.status.FAILED_PRECONDITION, "Insufficient stock");
+  }
+  if (message.startsWith("RESERVATION_CONFLICT:") ||
+      message.startsWith("RESERVATION_HASH_MISMATCH:")) {
+    return grpcError(grpc.status.ALREADY_EXISTS, "Reservation identity conflict");
+  }
+  if (message.startsWith("INVALID_RESERVATION:")) {
+    return grpcError(grpc.status.INVALID_ARGUMENT, "Invalid reservation request");
+  }
+  return grpcError(grpc.status.INTERNAL, "Reservation operation failed");
+}
+
 server.addService(productProto.product.ProductService.service, {
-  // GET PRODUCT
   getProduct: async (call: any, callback: any) => {
     try {
-      const product = await prisma.product.findUnique({
-        where: { id: call.request.id },
-      });
-
+      const product = await prisma.product.findUnique({ where: { id: call.request.id } });
       if (!product) {
-        return callback({
-          code: grpc.status.NOT_FOUND,
-          details: "Product not found",
-        });
+        return callback(grpcError(grpc.status.NOT_FOUND, "Product not found"));
       }
       callback(null, product);
-    } catch (err) {
-      callback(err);
+    } catch {
+      callback(grpcError(grpc.status.INTERNAL, "Could not fetch product"));
     }
   },
 
-  // DECREMENT STOCK
+  // Legacy endpoints remain for compatibility. Checkout uses ReserveStock so
+  // multiple products are updated atomically in one Product Service transaction.
   decrementStock: async (call: any, callback: any) => {
     const { id, quantity } = call.request;
+    if (!Number.isInteger(quantity) || quantity <= 0) {
+      return callback(grpcError(grpc.status.INVALID_ARGUMENT, "Invalid quantity"));
+    }
     try {
-      const product = await prisma.product.update({
-        where: { id },
+      const result = await prisma.product.updateMany({
+        where: { id, stock: { gte: quantity } },
         data: { stock: { decrement: quantity } },
       });
+      if (result.count !== 1) {
+        return callback(grpcError(grpc.status.FAILED_PRECONDITION, "Insufficient stock"));
+      }
       callback(null, { success: true, message: "Stock reduced" });
-    } catch (err) {
-      callback(null, { success: false, message: "Failed to reduce stock" });
+    } catch {
+      callback(grpcError(grpc.status.INTERNAL, "Failed to reduce stock"));
     }
   },
 
-  // INCREMENT STOCK (Compensation)
   incrementStock: async (call: any, callback: any) => {
     const { id, quantity } = call.request;
+    if (!Number.isInteger(quantity) || quantity <= 0) {
+      return callback(grpcError(grpc.status.INVALID_ARGUMENT, "Invalid quantity"));
+    }
     try {
       await prisma.product.update({
         where: { id },
         data: { stock: { increment: quantity } },
       });
       callback(null, { success: true, message: "Stock restored" });
-    } catch (err) {
-      callback(err);
+    } catch {
+      callback(grpcError(grpc.status.INTERNAL, "Failed to restore stock"));
     }
   },
 
   reserveStock: async (call: any, callback: any) => {
     try {
+      const request = call.request;
       const result = await reserveStock({
-        reservationId: call.request.reservation_id,
-        orderId: call.request.order_id,
-        requestHash: call.request.request_hash,
-        items: call.request.items.map((item: any) => ({
+        reservationId: request.reservation_id,
+        orderId: request.order_id,
+        requestHash: request.request_hash,
+        items: (request.items ?? []).map((item: any) => ({
           productId: item.product_id,
           quantity: item.quantity,
         })),
@@ -92,79 +115,66 @@ server.addService(productProto.product.ProductService.service, {
       callback(null, {
         reservation_id: result.reservationId,
         status: result.status,
-        items: result.items.map((item: any) => ({
+        items: result.items.map((item) => ({
           product_id: item.productId,
           product_name: item.productName,
-          unit_price: item.unitPrice.toString(),
+          unit_price: item.unitPrice,
           quantity: item.quantity,
         })),
       });
-    } catch (error: any) {
-      const insufficient = String(error?.message).startsWith(
-        "INSUFFICIENT_STOCK:",
-      );
-
-      callback({
-        code: insufficient
-          ? grpc.status.FAILED_PRECONDITION
-          : grpc.status.INTERNAL,
-        details: insufficient ? "Insufficient stock" : "Reservation failed",
-      });
+    } catch (error) {
+      callback(domainGrpcError(error));
     }
   },
 
   getReservation: async (call: any, callback: any) => {
     try {
-      const result = await getReservation(call.request.reservation_id);
-
+      const result = await getReservation(
+        call.request.reservation_id,
+        call.request.request_hash,
+      );
       if (!result) {
-        return callback({
-          code: grpc.status.NOT_FOUND,
-          details: "Reservation not found",
-        });
+        return callback(grpcError(grpc.status.NOT_FOUND, "Reservation not found"));
       }
 
       callback(null, {
-        reservation_id: result.id,
+        reservation_id: result.reservationId,
         status: result.status,
-        items: result.items.map((item: any) => ({
+        items: result.items.map((item) => ({
           product_id: item.productId,
           product_name: item.productName,
-          unit_price: item.unitPrice.toString(),
+          unit_price: item.unitPrice,
           quantity: item.quantity,
         })),
       });
-    } catch {
-      callback({
-        code: grpc.status.INTERNAL,
-        details: "Could not query reservation",
-      });
+    } catch (error) {
+      callback(domainGrpcError(error));
     }
   },
 
   releaseStock: async (call: any, callback: any) => {
     try {
-      const result = await releaseStock(call.request.reservation_id);
-
-      callback(null, {
-        reservation_id: result.reservationId,
-        status: result.status,
-      });
-    } catch {
-      callback({
-        code: grpc.status.INTERNAL,
-        details: "Could not release reservation",
-      });
+      const result = await releaseStock(
+        call.request.reservation_id,
+        call.request.request_hash,
+      );
+      callback(null, { reservation_id: result.reservationId, status: result.status });
+    } catch (error) {
+      callback(domainGrpcError(error));
     }
   },
 });
 
-// Start the server
-const PORT = process.env.GRPC_PORT || "50051";
+const PORT = Number(process.env.GRPC_PORT || 50051);
 server.bindAsync(
   `0.0.0.0:${PORT}`,
   grpc.ServerCredentials.createInsecure(),
-  () => {
-    console.log(`🚀 Product gRPC Server running on port ${PORT}`);
+  (error, port) => {
+    if (error) {
+      console.error("Failed to bind Product Service gRPC server", error);
+      process.exitCode = 1;
+      return;
+    }
+    console.log(`Product gRPC server listening on ${port}`);
   },
 );

@@ -1,12 +1,8 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
+// Order Service owns order workflow state and the transactional outbox.
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
-  moduleFormat  = "cjs"
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
 }
 
 datasource db {
@@ -30,12 +26,12 @@ enum OrderWorkflowStatus {
 }
 
 model Order {
-  id          String   @id @default(uuid())
-  userId      String
-  status      OrderStatus @default(PENDING)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  items       OrderItem[]
+  id        String      @id @default(uuid())
+  userId    String
+  status    OrderStatus @default(PENDING)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  items     OrderItem[]
 
   @@map("order")
 }
@@ -46,34 +42,50 @@ model OrderItem {
   productId   String
   productName String
   quantity    Int
-  unitPrice   Decimal   @db.Decimal(10, 2)
-  order       Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  unitPrice   Decimal  @db.Decimal(10, 2)
+  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   @@map("orderItem")
 }
 
 model OrderWorkflow {
-  id          String              @id
-  userId      String
-  requestHash String
-  status      OrderWorkflowStatus @default(STARTED)
-  lastError   String?
-  createdAt   DateTime            @default(now())
-  updatedAt   DateTime            @updatedAt
+  // Deterministic, user-scoped id derived from the client idempotency key.
+  id               String             @id
+  // Persist a genuine UUID for public Order.id and event contracts.
+  orderId          String             @unique(map: "OrderWorkflow_orderId_key")
+  userId           String
+  userEmail        String
+  requestHash      String
+  reservationHash  String
+  requestPayload   Json
+  correlationId    String
+  status           OrderWorkflowStatus @default(STARTED)
+  lastError        String?
+  attempts         Int                @default(0)
+  nextAttemptAt    DateTime           @default(now())
+  leaseOwner       String?
+  leaseUntil       DateTime?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
 
+  @@index([status, nextAttemptAt, leaseUntil], map: "order_workflow_recovery_idx")
   @@map("order_workflow")
 }
 
 model OutboxEvent {
-  id          String   @id @default(uuid())
-  eventType   String
-  aggregateId String
-  payload     Json
-  publishedAt DateTime?
-  attempts    Int      @default(0)
-  lastError   String?
-  createdAt   DateTime @default(now())
+  id            String   @id @default(uuid())
+  eventType     String
+  aggregateId   String
+  correlationId String
+  payload       Json
+  publishedAt   DateTime?
+  attempts      Int      @default(0)
+  lastError     String?
+  nextAttemptAt DateTime @default(now())
+  leaseOwner    String?
+  leaseUntil    DateTime?
+  createdAt     DateTime @default(now())
 
-  @@index([publishedAt, createdAt])
+  @@index([publishedAt, nextAttemptAt, createdAt], map: "outbox_event_publish_idx")
   @@map("outbox_event")
 }
